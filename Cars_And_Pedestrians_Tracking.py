@@ -1,13 +1,15 @@
 import cv2 as cv2
 from tkinter import *
 from tkinter import filedialog
+from tkinter import font
 
 filepath = ""
 car_tracker_file = 'Trackers/car_detector.xml'
 pedestrian_tracker_file = 'Trackers/pedestrian_detector.xml'
 
+
 def openFile():
-    global filepath 
+    global filepath
     filepath = filedialog.askopenfilename()
     print(filepath)
     video = cv2.VideoCapture(filepath)
@@ -41,10 +43,26 @@ def openFile():
             cv2.destroyAllWindows()
             break
 
-window = Tk()
-button = Button(text="Open",command=openFile)
+
+root = Tk(className="Group 9")
+
+frame = Frame(root, bg="white", width=60, height=10)
+frame.pack()
+
+label_font = font.Font(family='Helvitica', size=20)
+label = Label(frame, text="Cars and pedestrians detector",
+              font=label_font, width=50, height=5, bg="white")
+label.pack()
+
+button_font = font.Font(family='Helvitica', size=14)
+button = Button(frame, text="Open", command=openFile, bg='#45b592',
+                fg='#ffffff',
+                bd=0,
+                font=button_font,
+                height=1,
+                width=6,
+                pady=10)
+
 button.pack()
 
-window.mainloop()
-
-
+root.mainloop()

@@ -2,22 +2,49 @@
 import os
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
-# Load all image path
-PATH = "image_data\input"
+# Define the path to input images
+PATH = "img\input"
+
+# Define an array that contains all input images to choose
 data_folder_path = [os.path.join(PATH, image) for image in os.listdir(PATH) if '.jpg' in image]
+data_folder_path
 
-# Read an image
-image = cv2.imread(data_folder_path[1])
+# Read any image in the input images that are in data_folder_path array
+img = cv2.imread(data_folder_path[2])
 
+# Display the image
+plt.figure(figsize=(14, 14), dpi=75, facecolor='w', edgecolor='k')
+plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
-def get_canny(image):
+# Convert the image to gray image
+image_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+plt.figure(figsize=(14, 14), dpi=75, facecolor='w', edgecolor='k')
+plt.imshow(image_gray, cmap='gray')
+
+# Blurs an image using a Gaussian filter 
+# (input, kernel size, how much to filter, empty)
+blurred_img = cv2.GaussianBlur(image_gray, (11, 11), 0)
+
+plt.figure(figsize=(14, 14), dpi=75, facecolor='w', edgecolor='k')
+plt.imshow(blurred_img, cmap='gray')
+
+# Canny edge detection
+cannied_img = cv2.Canny(blurred_img, 50, 150)
+
+plt.figure(figsize=(14, 14), dpi=75, facecolor='w', edgecolor='k')
+plt.imshow(cannied_img, cmap='gray')
+
+# Grab all above functions as get_canny
+def get_canny(img):
     """
     Input: take a raw image
     Output: detect edges of img using canny
     """
     # Convert the image to gray image
-    image_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    image_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
     # Blurs an image using a Gaussian filter
     image_blur = cv2.GaussianBlur(image_gray, (11, 11), 0)
@@ -27,44 +54,49 @@ def get_canny(image):
     return image_canny
 
 
-canny = get_canny(image)
+canny = get_canny(img)
 
+plt.figure(figsize=(14, 14), dpi=75, facecolor='w', edgecolor='k')
+plt.imshow(cannied_img, cmap='gray')
 
-def region_of_interest(image):
+def region_of_interest(img):
     """
     Only keeps the region of the image defined by a polygon
     -----------------------------------------------------
     Input: get a edge image, vertices as the limit of ROI
     Output: A mask of image which only contains ROI
     """
-    height = image.shape[0]
-    width = image.shape[1]
+    height = img.shape[0]
+    width = img.shape[1]
     polygon = np.array([[(width, height), (int(width / 2), int(height / 2)), (0, height)]])
-    mask = np.zeros_like(image)
+    mask = np.zeros_like(img)
     cv2.fillPoly(mask, polygon, 255)
-    image_mask = cv2.bitwise_and(image, mask)
+    image_mask = cv2.bitwise_and(img, mask)
     return image_mask
 
 
-image_mask = region_of_interest(canny)
+image_mask = region_of_interest(cannied_img)
 
+plt.figure(figsize=(14, 14), dpi=75, facecolor='w', edgecolor='k')
+plt.imshow(image_mask, cmap='gray')
 
-def draw_lines(image, lines):
-    image_line = np.zeros_like(image)
+def draw_lines(img, lines):
+    image_line = np.zeros_like(img)
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line.reshape(4, 1)
-            cv2.line(image_line, (x1, y1), (x2, y2), (255, 0, 0), 10)
-    image_combine_line = cv2.addWeighted(image, 0.8, image_line, 1, 1)
+            cv2.line(image_line, (int (x1) , int (y1)), (int (x2), int (y2)), (255, 0, 0), 10)
+    image_combine_line = cv2.addWeighted(img, 0.8, image_line, 1, 1)
     return image_combine_line
 
-
 # Use function HoughLinesP() to detect lines in an image
-lines = cv2.HoughLinesP(image_mask, 2, np.pi / 180, 50, np.array([]), minLineLength=40, maxLineGap=5)
+lines = cv2.HoughLinesP(image_mask, 2, np.pi/180, 50, np.array([]), minLineLength=40, maxLineGap=5)
 
 # Draw detected lines in the image
-image_line = draw_lines(image, lines)
-
+image_line = draw_lines(img, lines)
+    
+plt.figure(figsize=(14, 14), dpi=80, facecolor='w', edgecolor='k')
+plt.imshow(cv2.cvtColor(image_line, cv2.COLOR_BGR2RGB))
 
 def find_intersection_point(left, right):
     """
@@ -94,10 +126,10 @@ def make_coordinates(intersection_point, line_params):
         slope, intercept = line_params
     except TypeError:
         slope, intercept = 0, 0
-    y1 = image.shape[0]
+    y1 = img.shape[0]
     y2 = int(intersection_point[1] * 100 / 90)
     if (slope == 0):
-        x1 = image.shape[0]
+        x1 = img.shape[0]
         x2 = int(intersection_point[0] * 100 / 90)
     else:
         x1 = int((y1 - intercept) / slope)
@@ -145,27 +177,21 @@ def average_slope_intercept(image, lines):
 
     return np.array([left_line, right_line])
 
+avg_line = average_slope_intercept(img, lines)
+image_line = draw_lines(img, avg_line)
 
-avg_line = average_slope_intercept(image, lines)
-image_line = draw_lines(image, avg_line)
+plt.figure(figsize=(14, 14), dpi=75, facecolor='w', edgecolor='k')
+plt.imshow(cv2.cvtColor(image_line, cv2.COLOR_BGR2RGB))
 
-
-def draw_lane(image, lines):
-    image_lane = np.zeros_like(image)
+def draw_lane(img, lines):
+    image_lane = np.zeros_like(img)
     points_list = np.array(avg_line, np.int32).reshape((4, 2))
-    # Insert offset width
-    points_list[0][0] += 10
-    points_list[1][0] += 10
-    points_list[2][0] -= 10
-    points_list[3][0] -= 10
     points_list = np.array([points_list[0], points_list[1], points_list[3], points_list[2]])
     cv2.fillPoly(image_lane, [points_list], (0, 255, 0))
     image_combine_lane = cv2.addWeighted(image_line, 1, image_lane, 0.5, 1)
     return image_combine_lane
 
-
 image_lane = draw_lane(image_line, avg_line)
 
-cv2.imshow('Matched Template', image_lane)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+plt.figure(figsize=(14, 14), dpi=75, facecolor='w', edgecolor='k')
+plt.imshow(cv2.cvtColor(image_lane, cv2.COLOR_BGR2RGB))
